@@ -2,6 +2,7 @@
 
 const express = require('express');
 const logger = require('./logger');
+const cors = require('cors');
 
 const argv = require('./argv');
 const port = require('./port');
@@ -13,6 +14,10 @@ const ngrok =
     : false;
 const { resolve } = require('path');
 const app = express();
+app.use(cors());
+const server = require('http').Server(app);
+const io = require('socket.io')(server, { origins: '*:*' });
+server.listen(3001);
 
 // If you need a backend, e.g. an API, add your custom backend-specific middleware here
 // app.use('/api', myApi);
@@ -23,6 +28,52 @@ setup(app, {
   publicPath: '/',
 });
 
+function socketIdsInRoom(name) {
+  console.log(io.sockets.adapter.rooms[name]);
+
+  const room = io.sockets.adapter.rooms[name];
+  // const socketIds = io.nsps['/'].adapter.rooms[name];
+
+  if (room) {
+    const socketIds = room.sockets;
+    console.log(socketIds);
+    const collection = [];
+    for (const key in socketIds) {
+      console.log(key);
+      collection.push(key);
+    }
+    return collection;
+  }
+  return [];
+}
+
+io.on('connection', socket => {
+  console.log('connection');
+  socket.on('disconnect', () => {
+    console.log('disconnect');
+    if (socket.room) {
+      const room = socket.room;
+      io.to(room).emit('leave', socket.id);
+      socket.leave(room);
+    }
+  });
+
+  socket.on('join', (name, callback) => {
+    console.log('join', name);
+    const socketIds = socketIdsInRoom(name);
+    console.log(socketIds);
+    callback(socketIds);
+    socket.join(name);
+    socket.room = name;
+  });
+
+  socket.on('exchange', data => {
+    console.log('exchange', data);
+    data.from = socket.id;
+    const to = io.sockets.connected[data.to];
+    to.emit('exchange', data);
+  });
+});
 // get the intended host and port number, use localhost and port 3000 if not provided
 const customHost = argv.host || process.env.HOST;
 const host = customHost || null; // Let http.Server use its default IPv6/4 host

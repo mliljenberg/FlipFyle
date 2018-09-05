@@ -100,7 +100,9 @@
       "express",
       "ip",
       "minimist",
-      "sanitize.css"
+      "sanitize.css",
+      "cors",
+      "socket.io"
     ],
     "include": [
       "core-js",
@@ -147,6 +149,7 @@
     "babel-polyfill": "6.26.0",
     "chalk": "^2.4.1",
     "compression": "1.7.2",
+    "cors": "^2.8.4",
     "cross-env": "5.2.0",
     "express": "4.16.3",
     "fontfaceobserver": "2.0.13",
@@ -172,8 +175,11 @@
     "redux-saga": "0.16.0",
     "reselect": "3.0.1",
     "sanitize.css": "4.1.0",
+    "socket.io": "^2.1.1",
+    "socket.io-client": "^2.1.1",
     "styled-components": "3.3.2",
     "warning": "4.0.1",
+    "webrtc": "^1.14.1",
     "whatwg-fetch": "2.0.4"
   },
   "devDependencies": {
