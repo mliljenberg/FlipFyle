@@ -3,6 +3,7 @@
 const express = require('express');
 const logger = require('./logger');
 const cors = require('cors');
+const crypto = require('crypto');
 
 const argv = require('./argv');
 const port = require('./port');
@@ -27,51 +28,69 @@ setup(app, {
   outputPath: resolve(process.cwd(), 'build'),
   publicPath: '/',
 });
+const created = false;
 
-function socketIdsInRoom(name) {
-  console.log(io.sockets.adapter.rooms[name]);
-
-  const room = io.sockets.adapter.rooms[name];
-  // const socketIds = io.nsps['/'].adapter.rooms[name];
-
-  if (room) {
-    const socketIds = room.sockets;
-    console.log(socketIds);
-    const collection = [];
-    for (const key in socketIds) {
-      console.log(key);
-      collection.push(key);
-    }
-    return collection;
+io.sockets.on('connection', socket => {
+  // convenience function to log server messages on the client
+  function log() {
+    const array = ['Message from server:'];
+    array.push(...arguments);
+    socket.emit('log', array);
   }
-  return [];
-}
 
-io.on('connection', socket => {
-  console.log('connection');
-  socket.on('disconnect', () => {
-    console.log('disconnect');
-    if (socket.room) {
-      const room = socket.room;
-      io.to(room).emit('leave', socket.id);
-      socket.leave(room);
+  socket.on('message', message => {
+    log('Client said: ', message);
+    // for a real app, would be room-only (not broadcast)
+    socket.broadcast.emit('message', message);
+  });
+
+  socket.on('create or join', room => {
+    log(`Received request to create or join room ${room}`);
+    if (room === -1) {
+      const id = crypto.randomBytes(3).toString('hex');
+      console.log(id);
+    }
+    const clientsInRoom = io.sockets.adapter.rooms[room];
+    const numClients = clientsInRoom
+      ? Object.keys(clientsInRoom.sockets).length
+      : 0;
+    log(`Room ${room} now has ${numClients} client(s)`);
+
+    if (numClients === 0) {
+      socket.join(room);
+      log(`Client ID ${socket.id} created room ${room}`);
+      socket.emit('created', room, socket.id);
+    } else if (numClients === 1) {
+      log(`Client ID ${socket.id} joined room ${room}`);
+      // io.sockets.in(room).emit('join', room);
+      socket.join(room);
+      socket.emit('joined', room, socket.id);
+      io.sockets.in(room).emit('ready', room);
+      socket.broadcast.emit('ready', room);
+    } else {
+      // max two clients
+      socket.emit('full', room);
     }
   });
 
-  socket.on('join', (name, callback) => {
-    console.log('join', name);
-    const socketIds = socketIdsInRoom(name);
-    console.log(socketIds);
-    callback(socketIds);
-    socket.join(name);
-    socket.room = name;
+  socket.on('ipaddr', () => {
+    const ifaces = os.networkInterfaces();
+    for (const dev in ifaces) {
+      ifaces[dev].forEach(details => {
+        if (details.family === 'IPv4' && details.address !== '127.0.0.1') {
+          socket.emit('ipaddr', details.address);
+        }
+      });
+    }
   });
 
-  socket.on('exchange', data => {
-    console.log('exchange', data);
-    data.from = socket.id;
-    const to = io.sockets.connected[data.to];
-    to.emit('exchange', data);
+  socket.on('disconnect', reason => {
+    console.log(`Peer or server disconnected. Reason: ${reason}.`);
+    socket.broadcast.emit('bye');
+  });
+
+  socket.on('bye', room => {
+    console.log(`Peer said bye on room ${room}.`);
   });
 });
 // get the intended host and port number, use localhost and port 3000 if not provided
