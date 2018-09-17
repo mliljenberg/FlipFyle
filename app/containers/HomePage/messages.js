@@ -10,4 +10,12 @@ export default defineMessages({
     id: 'app.components.HomePage.header',
     defaultMessage: 'Welcome to FlipFyle!',
   },
+  sending: {
+    id: 'app.components.HomePage.sending',
+    defaultMessage: 'Sending Your File',
+  },
+  reciving: {
+    id: 'app.components.HomePage.reciving',
+    defaultMessage: 'Reciving Your File',
+  },
 });

@@ -14,8 +14,9 @@ import { saveAs } from 'file-saver/FileSaver';
 import styled from 'styled-components';
 import { FormattedMessage } from 'react-intl';
 import SocketIOClient from 'socket.io-client';
-
+import desktopIcon from '../../images/desktop.svg';
 import messages from './messages';
+import Bubbles from './bubbles';
 
 const RTCPeerConnection =
   window.RTCPeerConnection ||
@@ -34,12 +35,56 @@ navigator.getUserMedia =
   navigator.msGetUserMedia;
 
 const configuration = {
-  iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+  iceServers: [
+    { url: 'stun:stun.l.google.com:19302' },
+    { url: 'stun:stun1.l.google.com:19302' },
+    { url: 'stun:stun2.l.google.com:19302' },
+    { url: 'stun:stun3.l.google.com:19302' },
+    { url: 'stun:stun4.l.google.com:19302' },
+  ],
 };
 // configuration.iceServers = twilioIceServers;
 let isInitiator = false;
 const roomId = '1';
+const Bubble1 = styled.div`
+  display: block;
+  width: 40px;
+  height: 40px;
+  background: #e57b3a;
+  border-radius: 50%;
+  animation-name: drive;
+  animation-duration: 3s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-delay; 2s;
 
+  @keyframes drive {
+  0% {transform: translateY(-200px);}
+  100% {transform: translateY(-450px);}
+  0% {transform: translateY(-200px);}
+`;
+const Bubble2 = styled.div`
+  display: block;
+  width: 40px;
+  height: 40px;
+  background: #e57b3a;
+  border-radius: 50%;
+  animation-name: drive;
+  animation-duration: 3s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-delay; 2s;
+
+  @keyframes drive {
+  0% {transform: translateY(-450px);}
+  100% {transform: translateY(-200px);}
+  0% {transform: translateY(-450px);}
+`;
+const DesktopImg = styled.img`
+  margin-top: 10vh;
+  width: 40vh;
+  height: 40vh;
+`;
 const Header = styled.h1`
   margin-top: 5vh;
 `;
@@ -64,10 +109,14 @@ const Description = styled.p`
 export default class HomePage extends React.Component {
   constructor(props) {
     super(props);
-    // this.state = { pc: null };
-    this.socket = SocketIOClient('http://192.168.1.100:3001', {
+    this.socket = SocketIOClient('http://192.168.1.102:3001', {
       transports: ['websocket'],
     });
+    this.state = {
+      sending: false,
+      reciving: false,
+      progress: 0,
+    };
     this.peerConn;
     this.dataChannel;
     this.handleOnClick = this.handleOnClick.bind(this);
@@ -272,6 +321,7 @@ export default class HomePage extends React.Component {
     let count = 0;
 
     return function onmessage(event) {
+      this.setState({ reciving: true });
       // console.log(event.data);
       if (typeof event.data === 'string') {
         const recivedData = JSON.parse(event.data);
@@ -289,8 +339,9 @@ export default class HomePage extends React.Component {
       }
 
       buf.push(new Uint8Array(event.data));
-      console.log(`${Math.ceil((count / totCount) * 100)}% done!`);
+      this.setState({ progress: Math.ceil((count / totCount) * 100) });
       count += 1;
+      this.setState({});
       if (count === totCount) {
         const received = new Blob(buf, { type });
         saveAs(received, name);
@@ -308,7 +359,7 @@ export default class HomePage extends React.Component {
         //   // renderPhoto(buf);
         // }
       }
-    };
+    }.bind(this);
   }
 
   uploadFile(event) {
@@ -323,6 +374,9 @@ export default class HomePage extends React.Component {
     }
   }
   sendData(file) {
+    this.setState({
+      sending: true,
+    });
     console.log(
       `File is ${[file.name, file.size, file.type, file.lastModified].join(
         ' ',
@@ -348,24 +402,40 @@ export default class HomePage extends React.Component {
     );
     fileReader.addEventListener('load', e => {
       console.log('FileRead.onload ', e);
-      this.dataChannel.send(e.target.result);
-      offset += e.target.result.byteLength;
-      // sendProgress.value = offset;
-      if (offset < file.size) {
-        readSlice(offset);
+      console.log('buffered amount:', this.dataChannel.bufferedAmount);
+      if (this.dataChannel.bufferedAmount < 16000000) {
+        this.dataChannel.send(e.target.result);
+        offset += e.target.result.byteLength;
+        // sendProgress.value = offset;
+        this.setState({ progress: Math.ceil((offset / file.size) * 100) });
+        if (offset < file.size) {
+          readSlice(offset);
+        }
+      } else {
+        sleep(100).then(() => {
+          this.dataChannel.send(e.target.result);
+          offset += e.target.result.byteLength;
+          // sendProgress.value = offset;
+          this.setState({ progress: Math.ceil((offset / file.size) * 100) });
+          if (offset < file.size) {
+            readSlice(offset);
+          }
+        });
       }
     });
     const readSlice = o => {
       console.log('readSlice ', o);
       const slice = file.slice(offset, o + chunkSize);
       fileReader.readAsArrayBuffer(slice);
-      // fileReader.readAsDataURL(slice);
+      // fileReader.readAsBinaryString(slice);
     };
     readSlice(0);
+    const sleep = milliseconds =>
+      new Promise(resolve => setTimeout(resolve, milliseconds));
   }
 
   render() {
-    return (
+    let view = (
       <Container>
         <Header>
           <FormattedMessage {...messages.header} />
@@ -383,5 +453,32 @@ export default class HomePage extends React.Component {
         <input type="file" name="myFile" onChange={this.uploadFile} />
       </Container>
     );
+    if (this.state.sending) {
+      view = (
+        <Container>
+          <Header>
+            <FormattedMessage {...messages.sending} />
+          </Header>
+          <DesktopImg src={desktopIcon} />
+          <Bubbles up />
+          <h1>{this.state.progress}%</h1>
+        </Container>
+      );
+    }
+
+    if (this.state.reciving) {
+      view = (
+        <Container>
+          <Header>
+            <FormattedMessage {...messages.reciving} />
+          </Header>
+          <DesktopImg src={desktopIcon} />
+          <Bubbles up={false} />
+          <h1>{this.state.progress}%</h1>
+        </Container>
+      );
+    }
+
+    return <div>{view}</div>;
   }
 }
