@@ -9,14 +9,15 @@
  * the linting exception.
  */
 
+/* eslint-disable react/prefer-stateless-function one-var */
+
 import React from 'react';
 import { saveAs } from 'file-saver/FileSaver';
 import styled from 'styled-components';
 import { FormattedMessage } from 'react-intl';
 import SocketIOClient from 'socket.io-client';
-import desktopIcon from '../../images/desktop.svg';
 import messages from './messages';
-import Bubbles from './bubbles';
+import TransferingFileView from '../../components/TransferingFileView';
 
 const RTCPeerConnection =
   window.RTCPeerConnection ||
@@ -46,45 +47,7 @@ const configuration = {
 // configuration.iceServers = twilioIceServers;
 let isInitiator = false;
 const roomId = '1';
-const Bubble1 = styled.div`
-  display: block;
-  width: 40px;
-  height: 40px;
-  background: #e57b3a;
-  border-radius: 50%;
-  animation-name: drive;
-  animation-duration: 3s;
-  animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite;
-  animation-delay; 2s;
 
-  @keyframes drive {
-  0% {transform: translateY(-200px);}
-  100% {transform: translateY(-450px);}
-  0% {transform: translateY(-200px);}
-`;
-const Bubble2 = styled.div`
-  display: block;
-  width: 40px;
-  height: 40px;
-  background: #e57b3a;
-  border-radius: 50%;
-  animation-name: drive;
-  animation-duration: 3s;
-  animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite;
-  animation-delay; 2s;
-
-  @keyframes drive {
-  0% {transform: translateY(-450px);}
-  100% {transform: translateY(-200px);}
-  0% {transform: translateY(-450px);}
-`;
-const DesktopImg = styled.img`
-  margin-top: 10vh;
-  width: 40vh;
-  height: 40vh;
-`;
 const Header = styled.h1`
   margin-top: 5vh;
 `;
@@ -105,11 +68,37 @@ const Description = styled.p`
   margin-top: 10vh;
 `;
 
-/* eslint-disable react/prefer-stateless-function */
+function get_browser() {
+  let ua = navigator.userAgent,
+    tem,
+    M =
+      ua.match(
+        /(opera|chrome|safari|firefox|msie|trident(?=\/))\/?\s*(\d+)/i,
+      ) || [];
+  if (/trident/i.test(M[1])) {
+    tem = /\brv[ :]+(\d+)/g.exec(ua) || [];
+    return { name: 'IE', version: tem[1] || '' };
+  }
+  if (M[1] === 'Chrome') {
+    tem = ua.match(/\bOPR|Edge\/(\d+)/);
+    if (tem != null) {
+      return { name: 'Opera', version: tem[1] };
+    }
+  }
+  M = M[2] ? [M[1], M[2]] : [navigator.appName, navigator.appVersion, '-?'];
+  if ((tem = ua.match(/version\/(\d+)/i)) != null) {
+    M.splice(1, 1, tem[1]);
+  }
+  return {
+    name: M[0],
+    version: M[1],
+  };
+}
+
 export default class HomePage extends React.Component {
   constructor(props) {
     super(props);
-    this.socket = SocketIOClient('http://192.168.1.102:3001', {
+    this.socket = SocketIOClient('http://85.228.39.114:3001', {
       transports: ['websocket'],
     });
     this.state = {
@@ -119,7 +108,6 @@ export default class HomePage extends React.Component {
     };
     this.peerConn;
     this.dataChannel;
-    this.handleOnClick = this.handleOnClick.bind(this);
     this.signalingMessageCallback = this.signalingMessageCallback.bind(this);
     this.createPeerConnection = this.createPeerConnection.bind(this);
     this.onLocalSessionCreated = this.onLocalSessionCreated.bind(this);
@@ -130,11 +118,18 @@ export default class HomePage extends React.Component {
     this.receiveDataChromeFactory = this.receiveDataChromeFactory.bind(this);
     this.uploadFile = this.uploadFile.bind(this);
     this.sendData = this.sendData.bind(this);
+    const browser = get_browser();
+    console.log(browser.name);
+    if (browser.name !== 'Chrome') {
+      alert(
+        'Sadly this application only works with chrome right now! Please download latest version of chrome to transfer your files. \n \n Well either that or save the file to usb and post it... up to you!',
+      );
+    }
     // this.join('1');
   }
 
   componentDidMount() {
-    this.socket.emit('create or join', roomId);
+    this.socket.emit('create or join', roomId, 'BROWSER');
     this.socket.on('ipaddr', ipaddr => {
       console.log(`Server IP address is: ${ipaddr}`);
       // updateRoomURL(ipaddr);
@@ -197,11 +192,6 @@ export default class HomePage extends React.Component {
   sendMessage(message) {
     console.log('Client sending message: ', message);
     this.socket.emit('message', message);
-  }
-  handleOnClick(message) {
-    console.log(message);
-    console.log('handelingClick: ', this.dataChannel);
-    this.dataChannel.send('fuck this piss');
   }
 
   signalingMessageCallback(message) {
@@ -407,17 +397,22 @@ export default class HomePage extends React.Component {
         this.dataChannel.send(e.target.result);
         offset += e.target.result.byteLength;
         // sendProgress.value = offset;
-        this.setState({ progress: Math.ceil((offset / file.size) * 100) });
+        this.setState({
+          progress: Math.ceil(
+            ((offset - this.dataChannel.bufferedAmount) / file.size) * 100,
+          ),
+        });
         if (offset < file.size) {
           readSlice(offset);
         }
       } else {
-        sleep(100).then(() => {
+        // TODO: Adjust the sleep to the transfer speed to get optimal speed. (might not be necessicary)
+        sleep(200).then(() => {
           this.dataChannel.send(e.target.result);
           offset += e.target.result.byteLength;
           // sendProgress.value = offset;
           this.setState({ progress: Math.ceil((offset / file.size) * 100) });
-          if (offset < file.size) {
+          if (offset - this.dataChannel.bufferedAmount < file.size) {
             readSlice(offset);
           }
         });
@@ -425,7 +420,7 @@ export default class HomePage extends React.Component {
     });
     const readSlice = o => {
       console.log('readSlice ', o);
-      const slice = file.slice(offset, o + chunkSize);
+      const slice = file.slice(offset, offset + chunkSize);
       fileReader.readAsArrayBuffer(slice);
       // fileReader.readAsBinaryString(slice);
     };
@@ -435,46 +430,27 @@ export default class HomePage extends React.Component {
   }
 
   render() {
-    let view = (
-      <Container>
-        <Header>
-          <FormattedMessage {...messages.header} />
-        </Header>
-        <QR />
-        <Description>
-          To use FlipFyle to magically teleport your files from your phone to
-          this computer,
-          <br />
-          simply download FlipFyle from{' '}
-          <a href="http://www.google.com"> app store</a> or{' '}
-          <a href="http://www.google.com"> play store </a>!
-        </Description>
-        <button onClick={this.handleOnClick}>Click me</button>
-        <input type="file" name="myFile" onChange={this.uploadFile} />
-      </Container>
-    );
+    let view;
     if (this.state.sending) {
+      view = <TransferingFileView up progress={this.state.progress} />;
+    } else if (this.state.reciving) {
+      view = <TransferingFileView up={false} progress={this.state.progress} />;
+    } else {
       view = (
         <Container>
           <Header>
-            <FormattedMessage {...messages.sending} />
+            <FormattedMessage {...messages.header} />
           </Header>
-          <DesktopImg src={desktopIcon} />
-          <Bubbles up />
-          <h1>{this.state.progress}%</h1>
-        </Container>
-      );
-    }
-
-    if (this.state.reciving) {
-      view = (
-        <Container>
-          <Header>
-            <FormattedMessage {...messages.reciving} />
-          </Header>
-          <DesktopImg src={desktopIcon} />
-          <Bubbles up={false} />
-          <h1>{this.state.progress}%</h1>
+          <QR />
+          <Description>
+            To use FlipFyle to magically teleport your files from your phone to
+            this computer,
+            <br />
+            simply download FlipFyle from{' '}
+            <a href="http://www.google.com"> app store</a> or{' '}
+            <a href="http://www.google.com"> play store </a>!
+          </Description>
+          <input type="file" name="myFile" onChange={this.uploadFile} />
         </Container>
       );
     }
