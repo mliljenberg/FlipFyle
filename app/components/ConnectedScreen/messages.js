@@ -9,6 +9,6 @@ import { defineMessages } from 'react-intl';
 export default defineMessages({
   header: {
     id: 'app.components.ConnectedScreen.header',
-    defaultMessage: 'This is the ConnectedScreen component !',
+    defaultMessage: 'You are now connectead and ready to send files',
   },
 });

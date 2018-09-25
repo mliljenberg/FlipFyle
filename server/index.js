@@ -28,7 +28,6 @@ setup(app, {
   outputPath: resolve(process.cwd(), 'build'),
   publicPath: '/',
 });
-const created = false;
 
 io.sockets.on('connection', socket => {
   // convenience function to log server messages on the client
@@ -44,12 +43,16 @@ io.sockets.on('connection', socket => {
     socket.broadcast.emit('message', message);
   });
 
-  socket.on('create or join', room => {
+  socket.on('create or join', roomId => {
+    let room = roomId;
     log(`Received request to create or join room ${room}`);
     if (room === -1) {
       const id = crypto.randomBytes(3).toString('hex');
-      console.log(id);
+      room = id;
     }
+
+    // TODO: Make sure a third person can't join a excisting room.
+
     const clientsInRoom = io.sockets.adapter.rooms[room];
     const numClients = clientsInRoom
       ? Object.keys(clientsInRoom.sockets).length

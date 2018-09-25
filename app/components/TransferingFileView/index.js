@@ -7,6 +7,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
+import LinearProgress from '@material-ui/core/LinearProgress';
 
 import { FormattedMessage } from 'react-intl';
 import messages from './messages';
@@ -28,18 +29,26 @@ const Container = styled.div`
   justify-content: space-around;
   align-items: center;
 `;
+const ProgressContainer = styled.div`
+  width:50vw;
+`;
 
 /* eslint-disable react/prefer-stateless-function */
 class TransferingFileView extends React.Component {
   render() {
+    let message = <FormattedMessage {...messages.reciving} />;
+    if (this.props.up) {
+      message = <FormattedMessage {...messages.sending} />;
+    }
     return (
       <Container>
-        <Header>
-          <FormattedMessage {...messages.sending} />
-        </Header>
+        <Header>{message}</Header>
         <DesktopImg src={desktopIcon} />
         <Bubbles up={this.props.up} />
-        <h1>{this.props.progress}%</h1>
+        <ProgressContainer>
+        <LinearProgress variant="determinate" value={this.props.progress} />
+        </ProgressContainer>
+        <h2>{this.props.progress}%</h2>
       </Container>
     );
   }

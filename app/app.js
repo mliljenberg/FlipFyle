@@ -9,6 +9,7 @@
 import 'babel-polyfill';
 
 // Import all the third party stuff
+
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { Provider } from 'react-redux';
@@ -35,6 +36,7 @@ import { translationMessages } from './i18n';
 
 // Import CSS reset and Global Styles
 import './global-styles';
+
 
 // Create redux store with history
 const initialState = {};

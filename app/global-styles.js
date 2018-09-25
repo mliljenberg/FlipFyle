@@ -9,7 +9,8 @@ injectGlobal`
   }
 
   body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+
+    font-family: 'Roboto', Helvetica, Arial, sans-serif;
   }
 
   body.fontLoaded {

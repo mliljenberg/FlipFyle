@@ -9,15 +9,15 @@
  * the linting exception.
  */
 
-/* eslint-disable react/prefer-stateless-function one-var */
+/* eslint-disable react/prefer-stateless-function one-var func-names no-param-reassign */
 
 import React from 'react';
 import { saveAs } from 'file-saver/FileSaver';
 import styled from 'styled-components';
-import { FormattedMessage } from 'react-intl';
 import SocketIOClient from 'socket.io-client';
-import messages from './messages';
 import TransferingFileView from '../../components/TransferingFileView';
+import MainScreen from '../../components/MainScreen';
+import ConnectedScreen from '../../components/ConnectedScreen';
 
 const RTCPeerConnection =
   window.RTCPeerConnection ||
@@ -37,35 +37,17 @@ navigator.getUserMedia =
 
 const configuration = {
   iceServers: [
-    { url: 'stun:stun.l.google.com:19302' },
-    { url: 'stun:stun1.l.google.com:19302' },
-    { url: 'stun:stun2.l.google.com:19302' },
-    { url: 'stun:stun3.l.google.com:19302' },
-    { url: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
   ],
 };
 // configuration.iceServers = twilioIceServers;
 let isInitiator = false;
-const roomId = '1';
-
-const Header = styled.h1`
-  margin-top: 5vh;
-`;
-const QR = styled.div`
-  width: 40vh;
-  height: 40vh;
-  margin-top: 10vh;
-  background-color: black;
-`;
-const Container = styled.div`
-  display: flex;
-  flex-direction: column;
-  justify-content: space-around;
-  align-items: center;
-`;
-
-const Description = styled.p`
-  margin-top: 10vh;
+const Background = styled.div`
+height: 100vh;
 `;
 
 function get_browser() {
@@ -98,13 +80,18 @@ function get_browser() {
 export default class HomePage extends React.Component {
   constructor(props) {
     super(props);
-    this.socket = SocketIOClient('http://85.228.39.114:3001', {
+    this.serverLocation = 'http://85.228.39.114:3001';
+    this.socket = SocketIOClient(this.serverLocation, {
       transports: ['websocket'],
     });
+    this.roomId = props.location.pathname.slice(1);
     this.state = {
       sending: false,
       reciving: false,
       progress: 0,
+      connected: false,
+      roomId: this.roomId,
+      roomCodeInput: '',
     };
     this.peerConn;
     this.dataChannel;
@@ -118,6 +105,8 @@ export default class HomePage extends React.Component {
     this.receiveDataChromeFactory = this.receiveDataChromeFactory.bind(this);
     this.uploadFile = this.uploadFile.bind(this);
     this.sendData = this.sendData.bind(this);
+    this.handleChange = this.handleChange.bind(this);
+    this.connectButtonClicked = this.connectButtonClicked.bind(this);
     const browser = get_browser();
     console.log(browser.name);
     if (browser.name !== 'Chrome') {
@@ -129,7 +118,12 @@ export default class HomePage extends React.Component {
   }
 
   componentDidMount() {
-    this.socket.emit('create or join', roomId, 'BROWSER');
+    console.log(this.state.roomId);
+    if (this.state.roomId === '') {
+      this.socket.emit('create or join', -1, 'BROWSER');
+    } else {
+      this.socket.emit('create or join', this.roomId, 'BROWSER');
+    }
     this.socket.on('ipaddr', ipaddr => {
       console.log(`Server IP address is: ${ipaddr}`);
       // updateRoomURL(ipaddr);
@@ -138,6 +132,7 @@ export default class HomePage extends React.Component {
     this.socket.on('created', (room, clientId) => {
       console.log('Created room', room, '- my client ID is', clientId);
       isInitiator = true;
+      this.setState({ roomId: room });
       // grabWebCamVideo();
     });
 
@@ -149,6 +144,7 @@ export default class HomePage extends React.Component {
         clientId,
       );
       isInitiator = false;
+      this.setState({ roomId: room });
       this.createPeerConnection(isInitiator, configuration);
       // grabWebCamVideo();
     });
@@ -174,12 +170,14 @@ export default class HomePage extends React.Component {
     });
     this.socket.on('disconnect', reason => {
       console.log(`Disconnected: ${reason}.`);
+      this.setState({ connected: false });
       // sendBtn.disabled = true;
       // snapAndSendBtn.disabled = true;
     });
 
     this.socket.on('bye', room => {
       console.log(`Peer leaving room ${room}.`);
+      this.setState({ connected: false });
       // sendBtn.disabled = true;
       // snapAndSendBtn.disabled = true;
       // If peer did not create the room, re-enter to be creator.
@@ -238,6 +236,7 @@ export default class HomePage extends React.Component {
           id: event.candidate.sdpMid,
           candidate: event.candidate.candidate,
         });
+        // alternative just use event.candidate
       } else {
         console.log('End of candidates.');
       }
@@ -274,7 +273,7 @@ export default class HomePage extends React.Component {
 
   onDataChannelCreated(channel) {
     console.log('onDataChannelCreated:', channel);
-
+    this.setState({ connected: true });
     channel.onopen = function() {
       console.log('CHANNEL opened!!!');
     };
@@ -428,33 +427,32 @@ export default class HomePage extends React.Component {
     const sleep = milliseconds =>
       new Promise(resolve => setTimeout(resolve, milliseconds));
   }
-
+  handleChange(event) {
+    this.setState({ roomCodeInput: event.target.value });
+  }
+  connectButtonClicked() {
+    window.open(`${this.serverLocation}/${this.state.roomCodeInput}`,'_self');
+  }
   render() {
     let view;
     if (this.state.sending) {
       view = <TransferingFileView up progress={this.state.progress} />;
     } else if (this.state.reciving) {
       view = <TransferingFileView up={false} progress={this.state.progress} />;
+    } else if (this.state.connected) {
+      view = <ConnectedScreen uploadFile={this.uploadFile} />;
     } else {
       view = (
-        <Container>
-          <Header>
-            <FormattedMessage {...messages.header} />
-          </Header>
-          <QR />
-          <Description>
-            To use FlipFyle to magically teleport your files from your phone to
-            this computer,
-            <br />
-            simply download FlipFyle from{' '}
-            <a href="http://www.google.com"> app store</a> or{' '}
-            <a href="http://www.google.com"> play store </a>!
-          </Description>
-          <input type="file" name="myFile" onChange={this.uploadFile} />
-        </Container>
+        <MainScreen
+          roomId={this.state.roomId}
+          url={`${this.serverLocation}/${this.state.roomId}`}
+          roomCodeInput={this.state.roomCodeInput}
+          handleChange={this.handleChange}
+          connectButtonClicked={this.connectButtonClicked}
+        />
       );
     }
 
-    return <div>{view}</div>;
+    return <Background>{view}</Background>;
   }
 }

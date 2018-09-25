@@ -7,11 +7,12 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
+import {colors} from '../../design'
 
-const orange = '#e57b3a';
-const grey = '#b9c0bd';
-const brown = '#c2b9af';
-const black = '#000000';
+const orange = colors.orange;
+const grey = colors.grey;
+const brown = colors.brown;
+const black = colors.black;
 
 const Bubble = styled.div`
 display: block;
