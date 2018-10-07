@@ -11,13 +11,18 @@
 
 /* eslint-disable react/prefer-stateless-function one-var func-names no-param-reassign */
 
+/* eslint-disable one-var */
+
+/* eslint-disable no-param-reassign */
+
 import React from 'react';
 import { saveAs } from 'file-saver/FileSaver';
 import styled from 'styled-components';
-import SocketIOClient from 'socket.io-client';
+import io from 'socket.io-client';
 import TransferingFileView from '../../components/TransferingFileView';
 import MainScreen from '../../components/MainScreen';
 import ConnectedScreen from '../../components/ConnectedScreen';
+import TransferComplete from '../../components/TransferComplete';
 
 const RTCPeerConnection =
   window.RTCPeerConnection ||
@@ -47,7 +52,7 @@ const configuration = {
 // configuration.iceServers = twilioIceServers;
 let isInitiator = false;
 const Background = styled.div`
-height: 100vh;
+  height: 100vh;
 `;
 
 function get_browser() {
@@ -80,18 +85,28 @@ function get_browser() {
 export default class HomePage extends React.Component {
   constructor(props) {
     super(props);
-    this.serverLocation = 'http://85.228.39.114:3001';
-    this.socket = SocketIOClient(this.serverLocation, {
-      transports: ['websocket'],
-    });
-    this.roomId = props.location.pathname.slice(1);
+    // will be: http://flipfyle.com/api
+    this.serverLocation =
+      'http//Flipfyle-env.ywpbtkpm6z.eu-central-1.elasticbeanstalk.com';
+    this.socket = io(
+      'http://Flipfyle-env.ywpbtkpm6z.eu-central-1.elasticbeanstalk.com',
+      {
+        transports: ['websocket'],
+      },
+    );
+    // this.socket = SocketIOClient('http//localhost:3001', {
+    //   transports: ['websocket'],
+    // });
+    this.roomId = props.location.pathname.slice(6);
     this.state = {
       sending: false,
       reciving: false,
       progress: 0,
       connected: false,
+      fileSent: false,
       roomId: this.roomId,
       roomCodeInput: '',
+      speed: 0,
     };
     this.peerConn;
     this.dataChannel;
@@ -124,10 +139,6 @@ export default class HomePage extends React.Component {
     } else {
       this.socket.emit('create or join', this.roomId, 'BROWSER');
     }
-    this.socket.on('ipaddr', ipaddr => {
-      console.log(`Server IP address is: ${ipaddr}`);
-      // updateRoomURL(ipaddr);
-    });
 
     this.socket.on('created', (room, clientId) => {
       console.log('Created room', room, '- my client ID is', clientId);
@@ -151,8 +162,6 @@ export default class HomePage extends React.Component {
 
     this.socket.on('full', room => {
       alert(`Room ${room} is full. We will create a new room for you.`);
-      window.location.hash = '';
-      window.location.reload();
     });
 
     this.socket.on('ready', () => {
@@ -161,7 +170,7 @@ export default class HomePage extends React.Component {
     });
 
     this.socket.on('log', array => {
-      console.log(...array);
+      console.log(array);
     });
 
     this.socket.on('message', message => {
@@ -181,15 +190,16 @@ export default class HomePage extends React.Component {
       // sendBtn.disabled = true;
       // snapAndSendBtn.disabled = true;
       // If peer did not create the room, re-enter to be creator.
-      if (!isInitiator) {
-        window.location.reload();
-      }
+      alert('other user left the room! reload and try again');
+      // if (!isInitiator) {
+      //   window.location.reload();
+      // }
     });
   }
 
   sendMessage(message) {
     console.log('Client sending message: ', message);
-    this.socket.emit('message', message);
+    this.socket.emit('message', message, this.state.roomId);
   }
 
   signalingMessageCallback(message) {
@@ -296,6 +306,7 @@ export default class HomePage extends React.Component {
 
   logError(err) {
     if (!err) return;
+    this.socket.emit('error', err);
     if (typeof err === 'string') {
       console.warn(err);
     } else {
@@ -308,6 +319,7 @@ export default class HomePage extends React.Component {
     const buf = [];
     const chunkSize = 16384;
     let count = 0;
+    const startTime = Math.round(new Date().getTime() / 1000);
 
     return function onmessage(event) {
       this.setState({ reciving: true });
@@ -328,13 +340,18 @@ export default class HomePage extends React.Component {
       }
 
       buf.push(new Uint8Array(event.data));
-      this.setState({ progress: Math.ceil((count / totCount) * 100) });
+      this.setState({
+        progress: Math.ceil((count / totCount) * 100),
+        speed: Math.round(
+          (count * chunkSize) /
+            ((Math.round(new Date().getTime() / 1000) - startTime) * 1000),
+        ),
+      });
       count += 1;
-      this.setState({});
       if (count === totCount) {
         const received = new Blob(buf, { type });
+        this.setState({ fileSent: true });
         saveAs(received, name);
-        console.log(received);
 
         // const data = new Uint8ClampedArray(event.data);
         // buf.set(data, count);
@@ -371,6 +388,7 @@ export default class HomePage extends React.Component {
         ' ',
       )}`,
     );
+    const startTime = Math.round(new Date().getTime() / 1000);
 
     // Handle 0 size files.
     if (file.size === 0) {
@@ -400,9 +418,15 @@ export default class HomePage extends React.Component {
           progress: Math.ceil(
             ((offset - this.dataChannel.bufferedAmount) / file.size) * 100,
           ),
+          speed: Math.round(
+            (offset - this.dataChannel.bufferedAmount) /
+              ((Math.round(new Date().getTime() / 1000) - startTime) * 1000),
+          ),
         });
         if (offset < file.size) {
           readSlice(offset);
+        } else {
+          this.setState({ fileSent: true, sending: false });
         }
       } else {
         // TODO: Adjust the sleep to the transfer speed to get optimal speed. (might not be necessicary)
@@ -410,9 +434,17 @@ export default class HomePage extends React.Component {
           this.dataChannel.send(e.target.result);
           offset += e.target.result.byteLength;
           // sendProgress.value = offset;
-          this.setState({ progress: Math.ceil((offset / file.size) * 100) });
+          this.setState({
+            progress: Math.ceil((offset / file.size) * 100),
+            speed: Math.round(
+              (offset - this.dataChannel.bufferedAmount) /
+                ((Math.round(new Date().getTime() / 1000) - startTime) * 1000),
+            ),
+          });
           if (offset - this.dataChannel.bufferedAmount < file.size) {
             readSlice(offset);
+          } else {
+            this.setState({ fileSent: true, sending: false });
           }
         });
       }
@@ -431,21 +463,39 @@ export default class HomePage extends React.Component {
     this.setState({ roomCodeInput: event.target.value });
   }
   connectButtonClicked() {
-    window.open(`${this.serverLocation}/${this.state.roomCodeInput}`,'_self');
+    window.open(
+      `http://flipfyle.com/room/${this.state.roomCodeInput}`,
+      '_self',
+    );
   }
   render() {
+    console.log(this.state.fileSent);
     let view;
     if (this.state.sending) {
-      view = <TransferingFileView up progress={this.state.progress} />;
+      view = (
+        <TransferingFileView
+          up
+          progress={this.state.progress}
+          speed={this.state.speed}
+        />
+      );
+    } else if (this.state.fileSent) {
+      view = <TransferComplete />;
     } else if (this.state.reciving) {
-      view = <TransferingFileView up={false} progress={this.state.progress} />;
+      view = (
+        <TransferingFileView
+          up={false}
+          progress={this.state.progress}
+          speed={this.state.speed}
+        />
+      );
     } else if (this.state.connected) {
       view = <ConnectedScreen uploadFile={this.uploadFile} />;
     } else {
       view = (
         <MainScreen
           roomId={this.state.roomId}
-          url={`${this.serverLocation}/${this.state.roomId}`}
+          url={`www.flipfyle.com/room/${this.state.roomId}`}
           roomCodeInput={this.state.roomCodeInput}
           handleChange={this.handleChange}
           connectButtonClicked={this.connectButtonClicked}

@@ -13,18 +13,25 @@
 
 import React from 'react';
 import { Switch, Route } from 'react-router-dom';
+import styled from 'styled-components';
 
 import HomePage from 'containers/HomePage/Loadable';
 import NotFoundPage from 'containers/NotFoundPage/Loadable';
+import background from './randomBackground';
+
+const Container = styled.div`
+  background-image: url(${background});
+  background-size: cover;
+`;
 
 export default function App() {
   return (
-    <div>
+    <Container>
       <Switch>
         <Route exact path="/" component={HomePage} />
-        <Route path="/:id" component={HomePage} />
+        <Route path="/room/:id" component={HomePage} />
         <Route component={NotFoundPage} />
       </Switch>
-    </div>
+    </Container>
   );
 }

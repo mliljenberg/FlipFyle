@@ -7,9 +7,11 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
-
-import { FormattedMessage } from 'react-intl';
-import messages from './messages';
+import CardActions from '@material-ui/core/CardActions';
+import CardContent from '@material-ui/core/CardContent';
+import Typography from '@material-ui/core/Typography';
+import Button from '@material-ui/core/Button';
+import Card from '@material-ui/core/Card';
 
 const Container = styled.div`
   display: flex;
@@ -17,19 +19,40 @@ const Container = styled.div`
   justify-content: space-around;
   align-items: center;
 `;
-const Header = styled.h1`
-  margin-top: 5vh;
+const StyledCard = styled(Card)`
+  width: 400px;
+  margin-top: 3em;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 `;
-
 /* eslint-disable react/prefer-stateless-function */
 class ConnectedScreen extends React.Component {
   render() {
     return (
       <Container>
-        <Header>
-          <FormattedMessage {...messages.header} />
-        </Header>
-        <input type="file" name="myFile" onChange={this.props.uploadFile} />
+        <StyledCard>
+          <CardContent align="center">
+            <h3>Connected!</h3>
+
+            <Typography>You are now connected and can send files</Typography>
+          </CardContent>
+          <CardActions>
+            <input
+              style={{ display: 'none' }}
+              id="raised-button-file"
+              multiple
+              type="file"
+              name="myFile"
+              onChange={this.props.uploadFile}
+            />
+            <label htmlFor="raised-button-file">
+              <Button component="span" variant="outlined" color="primary">
+                Upload File
+              </Button>
+            </label>
+          </CardActions>
+        </StyledCard>
       </Container>
     );
   }

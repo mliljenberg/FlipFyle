@@ -46,8 +46,8 @@ animation-delay:  ${props => props.delay}s;
 `;
 
 const insideDuration = 2;
-const insideStart = -120;
-const insideLength = 300;
+const insideStart = -90;
+const insideLength = 200;
 const delayPiece = insideDuration / 6;
 
 class Bubbles extends React.Component {
