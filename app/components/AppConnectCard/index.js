@@ -25,7 +25,7 @@ function AppConnectCard(props) {
     <Collapse in={props.checked}>
       <StyledCard>
         <CardContent>
-          <Typography>
+          <Typography variant="subheading">
             Scan the Qr code with the FlipFyle application
           </Typography>
         </CardContent>

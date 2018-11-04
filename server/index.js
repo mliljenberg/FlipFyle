@@ -17,8 +17,9 @@ const { resolve } = require('path');
 const app = express();
 app.use(cors());
 const server = require('http').Server(app);
+server.listen(8081);
 const io = require('socket.io')(server, { origins: '*:*' });
-// server.listen(8080);
+
 
 // If you need a backend, e.g. an API, add your custom backend-specific middleware here
 // app.use('/api', myApi);
@@ -28,16 +29,17 @@ setup(app, {
   outputPath: resolve(process.cwd(), 'build'),
   publicPath: '/',
 });
-console.log('du kom hit...');
 
 // get the intended host and port number, use localhost and port 3000 if not provided
 const customHost = argv.host || process.env.HOST;
 const host = customHost || null; // Let http.Server use its default IPv6/4 host
 const prettyHost = customHost || 'localhost';
+console.log(host, ' : ', port);
 
 // Start your app.
 server.listen(port, host, async err => {
   if (err) {
+    console.log(port);
     return logger.error(err.message);
   }
 
@@ -45,14 +47,11 @@ server.listen(port, host, async err => {
     // convenience function to log server messages on the client
     console.log('you got to the connection stage...');
     function log(data) {
-      // const array = ['Message from server:'];
-      // array.push(...data);
       socket.emit('log', data);
     }
 
     socket.on('message', (message, room) => {
       log('Client said: ', message);
-      // for a real app, would be room-only (not broadcast)
       io.to(room).emit('message', message);
     });
     socket.on('error', error => {

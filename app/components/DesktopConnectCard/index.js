@@ -24,7 +24,7 @@ function DesktopConnectCard(props) {
     <Collapse in={props.checked}>
       <StyledCard>
         <CardContent>
-          <Typography>
+          <Typography variant="subheading">
             Send the following link to whom you want to connect to:
           </Typography>
         </CardContent>
@@ -33,23 +33,12 @@ function DesktopConnectCard(props) {
             <h2>{props.url}</h2>
           </Typography>
         </CardContent>
-        <CardContent>
-          <Typography align="center">
-            Or ask them to input the following code:
-          </Typography>
-        </CardContent>
-        <CardContent>
-          <Typography>
-            <h2>{props.roomId}</h2>
-          </Typography>
-        </CardContent>
       </StyledCard>
     </Collapse>
   );
 }
 
 DesktopConnectCard.propTypes = {
-  roomId: PropTypes.string,
   url: PropTypes.string,
   checked: PropTypes.bool,
 };

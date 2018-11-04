@@ -10,28 +10,18 @@ import Card from '@material-ui/core/Card';
 import CardActions from '@material-ui/core/CardActions';
 import CardContent from '@material-ui/core/CardContent';
 import Typography from '@material-ui/core/Typography';
-import TextField from '@material-ui/core/TextField';
-import Button from '@material-ui/core/Button';
 import Tabs from '@material-ui/core/Tabs';
 import Tab from '@material-ui/core/Tab';
 import Divider from '@material-ui/core/Divider';
 import DesktopConnectCard from '../DesktopConnectCard';
 import AppConnectCard from '../AppConnectCard';
 
-const Header = styled.h1`
-  margin-top: 5vh;
-`;
-// const QR = styled.div`
-//   width: 40vh;
-//   height: 40vh;
-//   margin-top: 10vh;
-//   background-color: black;
-// `;
 const Container = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: space-around;
   align-items: center;
+  padding-top: 8%;
 `;
 const StyledCard = styled(Card)`
   width: 400px;
@@ -44,9 +34,6 @@ const StyledCardActions = styled(CardActions)`
   display: flex;
   justify-content: space-around;
   align-items: flex-end;
-`;
-const ConnectButton = styled(Button)`
-  align-self: flex-end;
 `;
 
 /* eslint-disable react/prefer-stateless-function */
@@ -64,30 +51,24 @@ class MainScreen extends React.Component {
   render() {
     return (
       <Container>
-        <Header>FlipFyle</Header>
         <StyledCard>
           <CardContent>
-            <Typography align="center">
-              Welcome! <br />
-              If you recived a code input it below. Otherwise select a option
-              below to connect
+            <Typography
+              variant="title"
+              align="center"
+              style={{ margin: '10px 0 15px 0' }}
+            >
+              Welcome!
+            </Typography>
+            <Typography variant="subheading">
+              Flipfyle lets you send files to your friends or phone quickly,
+              securly and wihout going through any servers.
+              <br />
+              <br />
+              Connect to your phone or another person by selecting an option
+              below.
             </Typography>
           </CardContent>
-          <StyledCardActions>
-            <TextField
-              id="standard-name"
-              label="Peer Code"
-              value={this.props.roomCodeInput}
-              onChange={this.props.handleChange}
-              margin="normal"
-            />
-            <ConnectButton
-              color="primary"
-              onClick={this.props.connectButtonClicked}
-            >
-              Connect
-            </ConnectButton>
-          </StyledCardActions>
           <div>
             <Divider />
           </div>
@@ -121,9 +102,6 @@ class MainScreen extends React.Component {
 MainScreen.propTypes = {
   roomId: PropTypes.string,
   url: PropTypes.string,
-  handleChange: PropTypes.func,
-  roomCodeInput: PropTypes.string,
-  connectButtonClicked: PropTypes.func,
 };
 
 export default MainScreen;

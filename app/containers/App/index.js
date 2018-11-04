@@ -17,16 +17,17 @@ import styled from 'styled-components';
 
 import HomePage from 'containers/HomePage/Loadable';
 import NotFoundPage from 'containers/NotFoundPage/Loadable';
-import background from './randomBackground';
+import TopBar from '../../components/TopBar';
 
 const Container = styled.div`
-  background-image: url(${background});
+  background-image: url('https://s3.eu-central-1.amazonaws.com/flipfyle-bucket/background.jpg');
   background-size: cover;
 `;
 
 export default function App() {
   return (
     <Container>
+      <TopBar />
       <Switch>
         <Route exact path="/" component={HomePage} />
         <Route path="/room/:id" component={HomePage} />

@@ -33,9 +33,11 @@ class ConnectedScreen extends React.Component {
       <Container>
         <StyledCard>
           <CardContent align="center">
-            <h3>Connected!</h3>
+            <Typography variant="title">Connected!</Typography>
 
-            <Typography>You are now connected and can send files</Typography>
+            <Typography variant="subheading">
+              You can now send files to eachother.
+            </Typography>
           </CardContent>
           <CardActions>
             <input

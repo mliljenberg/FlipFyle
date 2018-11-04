@@ -120,10 +120,7 @@ export default class HomePage extends React.Component {
     this.receiveDataChromeFactory = this.receiveDataChromeFactory.bind(this);
     this.uploadFile = this.uploadFile.bind(this);
     this.sendData = this.sendData.bind(this);
-    this.handleChange = this.handleChange.bind(this);
-    this.connectButtonClicked = this.connectButtonClicked.bind(this);
     const browser = get_browser();
-    console.log(browser.name);
     if (browser.name !== 'Chrome') {
       alert(
         'Sadly this application only works with chrome right now! Please download latest version of chrome to transfer your files. \n \n Well either that or save the file to usb and post it... up to you!',
@@ -133,7 +130,6 @@ export default class HomePage extends React.Component {
   }
 
   componentDidMount() {
-    console.log(this.state.roomId);
     if (this.state.roomId === '') {
       this.socket.emit('create or join', -1, 'BROWSER');
     } else {
@@ -141,19 +137,12 @@ export default class HomePage extends React.Component {
     }
 
     this.socket.on('created', (room, clientId) => {
-      console.log('Created room', room, '- my client ID is', clientId);
       isInitiator = true;
       this.setState({ roomId: room });
       // grabWebCamVideo();
     });
 
     this.socket.on('joined', (room, clientId) => {
-      console.log(
-        'This peer has joined room',
-        room,
-        'with client ID',
-        clientId,
-      );
       isInitiator = false;
       this.setState({ roomId: room });
       this.createPeerConnection(isInitiator, configuration);
@@ -165,7 +154,6 @@ export default class HomePage extends React.Component {
     });
 
     this.socket.on('ready', () => {
-      console.log('Socket is ready');
       this.createPeerConnection(isInitiator, configuration);
     });
 
@@ -174,7 +162,6 @@ export default class HomePage extends React.Component {
     });
 
     this.socket.on('message', message => {
-      console.log('Client received message:', message);
       this.signalingMessageCallback(message);
     });
     this.socket.on('disconnect', reason => {
@@ -185,7 +172,6 @@ export default class HomePage extends React.Component {
     });
 
     this.socket.on('bye', room => {
-      console.log(`Peer leaving room ${room}.`);
       this.setState({ connected: false });
       // sendBtn.disabled = true;
       // snapAndSendBtn.disabled = true;
@@ -204,7 +190,6 @@ export default class HomePage extends React.Component {
 
   signalingMessageCallback(message) {
     if (message.type === 'offer') {
-      console.log('Got offer. Sending answer to peer.');
       this.peerConn.setRemoteDescription(
         new RTCSessionDescription(message),
         () => {},
@@ -212,7 +197,6 @@ export default class HomePage extends React.Component {
       );
       this.peerConn.createAnswer(this.onLocalSessionCreated, this.logError);
     } else if (message.type === 'answer') {
-      console.log('Got answer.');
       this.peerConn.setRemoteDescription(
         new RTCSessionDescription(message),
         () => {},
@@ -228,17 +212,10 @@ export default class HomePage extends React.Component {
   }
 
   createPeerConnection(Initiator, config) {
-    console.log(
-      'Creating Peer connection as initiator?',
-      isInitiator,
-      'config:',
-      config,
-    );
     this.peerConn = new RTCPeerConnection(config);
 
     // send any ice candidates to the other peer
     this.peerConn.onicecandidate = function(event) {
-      console.log('icecandidate event:', event);
       if (event.candidate) {
         this.sendMessage({
           type: 'candidate',
@@ -250,19 +227,16 @@ export default class HomePage extends React.Component {
       } else {
         console.log('End of candidates.');
       }
-    }.bind(this);
+    };
 
     if (Initiator) {
-      console.log('Creating Data Channel');
       this.dataChannel = this.peerConn.createDataChannel('photos');
       console.log(this.dataChannel);
       this.onDataChannelCreated(this.dataChannel);
 
-      console.log('Creating an offer');
       this.peerConn.createOffer(this.onLocalSessionCreated, this.logError);
     } else {
       this.peerConn.ondatachannel = function(event) {
-        console.log('ondatachannel:', event.channel);
         this.dataChannel = event.channel;
         this.onDataChannelCreated(this.dataChannel);
       }.bind(this);
@@ -314,7 +288,6 @@ export default class HomePage extends React.Component {
     }
   }
   receiveDataChromeFactory() {
-    console.log('receiveDataChromeFactory');
     let len, totCount, type, name;
     const buf = [];
     const chunkSize = 16384;
@@ -323,19 +296,14 @@ export default class HomePage extends React.Component {
 
     return function onmessage(event) {
       this.setState({ reciving: true });
-      // console.log(event.data);
       if (typeof event.data === 'string') {
         const recivedData = JSON.parse(event.data);
-        console.log('dataChannel message: ', event.data);
         len = parseInt(recivedData.size, 10);
         type = recivedData.type;
         name = recivedData.name;
         // buf = new Uint8ClampedArray(parseInt(event.data));
 
         totCount = Math.ceil(len / chunkSize);
-        console.log(
-          `Expecting a total of ${len} bytes, which is ${totCount} sendings.`,
-        );
         return;
       }
 
@@ -352,25 +320,12 @@ export default class HomePage extends React.Component {
         const received = new Blob(buf, { type });
         this.setState({ fileSent: true });
         saveAs(received, name);
-
-        // const data = new Uint8ClampedArray(event.data);
-        // buf.set(data, count);
-        //
-        // count += data.byteLength;
-        // console.log(`count: ${count}`);
-        //
-        // if (count === buf.byteLength) {
-        //   // we're done: all data chunks have been received
-        //   console.log('Done. Rendering photo.');
-        //   // renderPhoto(buf);
-        // }
       }
     }.bind(this);
   }
 
   uploadFile(event) {
     const file = event.target.files[0];
-    console.log(file);
 
     if (file) {
       const data = new FormData();
@@ -383,11 +338,6 @@ export default class HomePage extends React.Component {
     this.setState({
       sending: true,
     });
-    console.log(
-      `File is ${[file.name, file.size, file.type, file.lastModified].join(
-        ' ',
-      )}`,
-    );
     const startTime = Math.round(new Date().getTime() / 1000);
 
     // Handle 0 size files.
@@ -408,8 +358,6 @@ export default class HomePage extends React.Component {
       console.log('File reading aborted:', event),
     );
     fileReader.addEventListener('load', e => {
-      console.log('FileRead.onload ', e);
-      console.log('buffered amount:', this.dataChannel.bufferedAmount);
       if (this.dataChannel.bufferedAmount < 16000000) {
         this.dataChannel.send(e.target.result);
         offset += e.target.result.byteLength;
@@ -450,7 +398,6 @@ export default class HomePage extends React.Component {
       }
     });
     const readSlice = o => {
-      console.log('readSlice ', o);
       const slice = file.slice(offset, offset + chunkSize);
       fileReader.readAsArrayBuffer(slice);
       // fileReader.readAsBinaryString(slice);
@@ -459,17 +406,9 @@ export default class HomePage extends React.Component {
     const sleep = milliseconds =>
       new Promise(resolve => setTimeout(resolve, milliseconds));
   }
-  handleChange(event) {
-    this.setState({ roomCodeInput: event.target.value });
-  }
-  connectButtonClicked() {
-    window.open(
-      `http://flipfyle.com/room/${this.state.roomCodeInput}`,
-      '_self',
-    );
-  }
+
+
   render() {
-    console.log(this.state.fileSent);
     let view;
     if (this.state.sending) {
       view = (
@@ -497,8 +436,6 @@ export default class HomePage extends React.Component {
           roomId={this.state.roomId}
           url={`www.flipfyle.com/room/${this.state.roomId}`}
           roomCodeInput={this.state.roomCodeInput}
-          handleChange={this.handleChange}
-          connectButtonClicked={this.connectButtonClicked}
         />
       );
     }
